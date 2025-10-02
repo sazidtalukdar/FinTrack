@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profit & Loss Tracker</title>
+  <style>
+  
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e0c3fc, #8ec5fc);
+      padding: 30px 15px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      color: #4a148c;
+      font-size: 2rem;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+    }
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    input[type="number"] {
+      flex: 1 1 30%;
+      min-width: 100px;
+      padding: 10px;
+      border: 2px solid #ba68c8;
+      border-radius: 8px;
+      background-color: #fff9ff;
+    }
+    button {
+      flex: 1 1 100%;
+      padding: 10px;
+      background-color: #7b1fa2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #6a1b9a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.95rem;
+    }
+    th, td {
+      padding: 12px 10px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background-color: #f3e5f5;
+      color: #4a148c;
+    }
+    tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+    .reset-btn {
+      margin-top: 20px;
+      background-color: #e53935;
+    }
+    .reset-btn:hover {
+      background-color: #c62828;
+    }
+    @media (max-width: 600px) {
+      form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      input[type="number"],
+      button {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>💰 Profit & Loss Tracker</h2>
+  <div class="container">
+    <form id="entryForm">
+      <input type="number" id="deposit" placeholder="Deposit" step="0.01" />
+      <input type="number" id="profit" placeholder="Profit" step="0.01" />
+      <input type="number" id="loss" placeholder="Loss" step="0.01" />
+      <button type="submit">➕ Add Entry</button>
+    </form>
+
+    <table id="entryTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Deposit</th>
+          <th>Profit</th>
+          <th>Loss</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button class="reset-btn" onclick="resetData()">🗑️ Reset All Data</button>
+  </div>
+
+  <script>
+    async function fetchEntries() {
+      const res = await fetch('http://localhost:3000/api/entries');
+      return await res.json();
+    }
+
+    async function addEntry(entry) {
+      await fetch('http://localhost:3000/api/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+    }
+
+    async function deleteAllEntries() {
+      await fetch('/api/entries', { method: 'DELETE' });
+    }
+
+    function calculateBalance(entries) {
+      let totalDeposit = 0, totalProfit = 0, totalLoss = 0;
+      return entries.map(entry => {
+        totalDeposit += entry.deposit;
+        totalProfit += entry.profit;
+        totalLoss += entry.loss;
+        return { ...entry, balance: totalDeposit + totalProfit - totalLoss };
+      });
+    }
+
+    function updateTable(entries) {
+      const tbody = document.querySelector("#entryTable tbody");
+      tbody.innerHTML = "";
+      const data = calculateBalance(entries);
+      data.forEach(entry => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${entry.date}</td>
+          <td>${entry.deposit.toFixed(2)}</td>
+          <td>${entry.profit.toFixed(2)}</td>
+          <td>${entry.loss.toFixed(2)}</td>
+          <td>${entry.balance.toFixed(2)}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    document.getElementById("entryForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const deposit = parseFloat(document.getElementById("deposit").value) || 0;
+      const profit = parseFloat(document.getElementById("profit").value) || 0;
+      const loss = parseFloat(document.getElementById("loss").value) || 0;
+      const date = new Date().toISOString().split('T')[0];
+
+      if (deposit === 0 && profit === 0 && loss === 0) return;
+
+      await addEntry({ date, deposit, profit, loss });
+      this.reset();
+      const entries = await fetchEntries();
+      updateTable(entries);
+    });
+
+    async function resetData() {
+      if (confirm("Are you sure you want to delete all entries?")) {
+        await deleteAllEntries();
+        updateTable([]);
+      }
+    }
+
+    fetchEntries().then(updateTable);
+  </script>
+</body>
+</html>

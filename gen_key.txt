@@ -1,0 +1,1 @@
+ssh-keygen -t ed25519 -C "23-53063-3@student.aiub.edu" -f ~/Desktop/profit_loss/id_ed25519
